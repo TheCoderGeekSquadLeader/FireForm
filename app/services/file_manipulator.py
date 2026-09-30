@@ -1,5 +1,7 @@
 import os
 
+from pdfrw import PdfReader, PdfWriter, PdfDict
+
 from app.core.logging import get_logger
 from app.services.filler import Filler
 from app.services.llm import LLM
@@ -58,9 +60,8 @@ class FileManipulator:
 
             # ISSUE #315: Metadata Scrubbing Pipeline 
             try:
-                from pdfrw import PdfReader, PdfWriter, PdfDict
                 reader = PdfReader(output_name)
-                # Réinitialise le dictionnaire Info avec un profil anonyme/standardisé
+                # Reinitialize the Info dictionary with an anonymous/standardized profile
                 reader.Info = PdfDict(
                     Title='FireForm Automated Report',
                     Author='FireForm',
