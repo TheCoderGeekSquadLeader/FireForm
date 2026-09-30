@@ -56,6 +56,23 @@ class FileManipulator:
             self.llm._model = model
             output_name = self.filler.fill_form(pdf_form=pdf_form_path, llm=self.llm)
 
+            # ISSUE #315: Metadata Scrubbing Pipeline 
+            try:
+                from pdfrw import PdfReader, PdfWriter, PdfDict
+                reader = PdfReader(output_name)
+                # Réinitialise le dictionnaire Info avec un profil anonyme/standardisé
+                reader.Info = PdfDict(
+                    Title='FireForm Automated Report',
+                    Author='FireForm',
+                    Producer='FireForm',
+                    Creator='FireForm'
+                )
+                PdfWriter().write(output_name, reader)
+                logger.info("Successfully scrubbed sensitive metadata from output PDF.")
+            except Exception as meta_err:
+                logger.warning("Could not strip PDF metadata: %s", meta_err)
+            # ===============================================
+
             logger.info("Process complete. Output saved to: %s", output_name)
 
             return output_name
