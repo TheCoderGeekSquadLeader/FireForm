@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pdfrw import PdfReader, PdfWriter
+from pdfrw import PdfReader, PdfWriter, PdfName
 
 from app.services.llm import LLM
 
@@ -41,8 +41,31 @@ class Filler:
                 for annot in sorted_annots:
                     if annot.Subtype == "/Widget" and annot.T:
                         if i < len(answers_list):
-                            annot.V = f"{answers_list[i]}"
-                            annot.AP = None
+                            val = answers_list[i]
+                            
+                            # Inspection du type de champ pour identifier les boutons / cases à cocher (/Btn)
+                            ft = getattr(annot, 'FT', None)
+                            if ft == '/Btn':
+                                # Traduction de la réponse de l'IA en état booléen
+                                is_checked = False
+                                if isinstance(val, bool):
+                                    is_checked = val
+                                elif isinstance(val, str):
+                                    is_checked = val.lower() in ['true', 'yes', '1', 'on', 'checked', 'oui']
+                                
+                                # Attribution de la valeur et de l'état d'affichage (Appearance State)
+                                if is_checked:
+                                    annot.V = PdfName('/Yes')
+                                    annot.AS = PdfName('/Yes')
+                                else:
+                                    annot.V = PdfName('/Off')
+                                    annot.AS = PdfName('/Off')
+                                annot.AP = None
+                            else:
+                                # Logique standard pour les champs de texte (/Tx)
+                                annot.V = f"{val}"
+                                annot.AP = None
+                                
                             i += 1
                         else:
                             # Stop if we run out of answers

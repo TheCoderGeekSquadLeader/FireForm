@@ -36,7 +36,8 @@ class LLM:
 
         total_fields = len(self._target_fields)
         for i, (field, field_type) in enumerate(self._target_fields.items(), 1):
-            prompt = self.build_prompt(field, field_type if isinstance(field_type, str) else "string")
+            f_type = field_type if isinstance(field_type, str) else "string"
+            prompt = self.build_prompt(field, f_type)
             ollama_url = f"{OLLAMA_HOST}/api/generate"
             ollama_model = self._model or OLLAMA_MODEL
 
@@ -70,30 +71,34 @@ class LLM:
                 raise RuntimeError("Failed to get response from Ollama after retries.")
             else:
                 parsed_response = json_data["response"]
-                self.add_response_to_json(field, parsed_response)
+                # Passage du type de champ pour permettre le mapping booléen
+                self.add_response_to_json(field, parsed_response, field_type=f_type)
                 logger.info("[%d/%d] Extracted data for field '%s' successfully.", i, total_fields, field)
 
         logger.info("Resulting JSON created from the input text:\n%s", json.dumps(self._json, indent=2))
 
         return self
 
-    def add_response_to_json(self, field: str, value: str):
+    def add_response_to_json(self, field: str, value: str, field_type: str = "string"):
         """
-        this method adds the following value under the specified field,
-        or under a new field if the field doesn't exist, to the json dict
+        This method adds the following value under the specified field,
+        or under a new field if the field doesn't exist, to the json dict.
+        Includes boolean mapping for checkbox/button fields.
         """
         value = value.strip().replace('"', "")
         parsed_value = None
 
         if value != "-1":
-            parsed_value = value
+            # Mapping des types booléens / cases à cocher
+            if field_type.lower() in ["boolean", "bool", "checkbox", "btn"]:
+                parsed_value = value.lower() in ["true", "yes", "1", "on", "checked", "oui"]
+            else:
+                parsed_value = value
 
         if field in self._json.keys():
             self._json[field].append(parsed_value)
         else:
             self._json[field] = parsed_value
-
-
 
     def get_data(self):
         return self._json
