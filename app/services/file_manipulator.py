@@ -49,7 +49,7 @@ class FileManipulator:
         user_input: str,
         fields: list,
         pdf_form_path: str,
-        model: str = None,
+        model: str | None = None,
     ):
         """
         It receives the raw data, runs the PDF filling logic,
@@ -87,7 +87,7 @@ class FileManipulator:
                 logger.info(
                     "Successfully scrubbed sensitive metadata from output PDF."
                 )
-            except Exception as meta_err:
+            except Exception as meta_err:  # noqa: BLE001
                 logger.warning(
                     "Could not strip PDF metadata: %s", meta_err
                 )
@@ -103,4 +103,4 @@ class FileManipulator:
             logger.error(
                 "An error occurred during PDF generation: %s", e
             )
-            raise e
+            raise

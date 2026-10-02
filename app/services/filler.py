@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pdfrw import PdfReader, PdfWriter
 
@@ -17,7 +17,7 @@ class Filler:
         output_pdf = (
             pdf_form[:-4]
             + "_"
-            + datetime.now().strftime("%Y%m%d_%H%M%S")
+            + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             + "_filled.pdf"
         )
 

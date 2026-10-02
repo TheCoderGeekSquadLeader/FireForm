@@ -27,7 +27,7 @@ class Runner:
             case_name = os.path.splitext(narrative_file)[0]
             # Match ics201_1.txt -> ics201_1.json or ics201.json
             # Find matching ground truth file
-            gt_name = case_name.split("_")[0] + "_1.json"  # default fallback
+            # default fallback
             possible_gts = [case_name + ".json", case_name.split("_")[0] + "_1.json"]
             gt_file = None
             for p in possible_gts:
@@ -57,7 +57,7 @@ class Runner:
             with open(gt_path, "r") as f:
                 gt_data = json.load(f)
                 # Unwrap the outer wrapper key if present
-                gt_key = list(gt_data.keys())[0]
+                gt_key = next(iter(gt_data.keys()))
                 gt_content = gt_data[gt_key]
 
             with open(template_path, "r") as f:

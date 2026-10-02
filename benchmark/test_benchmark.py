@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from benchmark.pipelines.pipeline import Pipeline
 from benchmark.runners.runner import Runner
@@ -12,7 +12,7 @@ def test_pipeline_execution():
     runs the benchmark dataset, writes execution results to a file, and asserts accuracy.
     """
     # Pipeline name contains current date and hour, minute and second (e.g. Pipeline_2026-07-08_12h_12m_12s)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%Hh_%Mm_%Ss")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%Hh_%Mm_%Ss")
     pipeline_name = f"Pipeline_{timestamp}"
 
     runner = Runner(Pipeline, pipeline_name)

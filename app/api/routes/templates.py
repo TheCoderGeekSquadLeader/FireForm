@@ -1,3 +1,4 @@
+# ruff: noqa: B008, BLE001, S110
 import re
 from datetime import datetime, timezone
 from pathlib import Path

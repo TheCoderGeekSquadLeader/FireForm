@@ -11,11 +11,16 @@ logger = get_logger(__name__)
 
 
 class LLM:
-    def __init__(self, transcript_text: str=None, target_fields: list=None, json_dict: dict=None, model: str=None):
+    def __init__(
+        self,
+        transcript_text: str | None = None,
+        target_fields: list | None = None,
+        json_dict: dict | None = None,
+        model: str | None = None,
+    ):
         self._transcript_text = transcript_text
         self._target_fields = target_fields
         self._json = json_dict if json_dict is not None else {}
-        # Optional per-request model override; falls back to OLLAMA_MODEL env.
         self._model = model
 
     def build_prompt(self, current_field: str, current_type: str = "string"):
@@ -88,7 +93,7 @@ class LLM:
         if value != "-1":
             parsed_value = value
 
-        if field in self._json.keys():
+        if field in self._json:
             self._json[field].append(parsed_value)
         else:
             self._json[field] = parsed_value
