@@ -12,6 +12,7 @@ from app.api.schemas.forms import (
 from app.core.errors.base import AppError
 from app.db.repositories import create_job, get_job_by_uuid, get_template
 from app.models import Job
+from app.services.input import InputService
 from app.tasks.fill import fill_form_task
 
 router = APIRouter(tags=["jobs"])
@@ -40,14 +41,16 @@ def submit_async_form_fill(form: AsyncFormFill, db: Session = Depends(get_db)):
         if not get_template(db, tid):
             raise AppError(f"Template {tid} not found", status_code=404)
 
+    transcript = InputService().resolve_transcript(db, form.input_id)
+
     jobs: list[AsyncJobSubmitResponse] = []
     for tid in form.template_ids:
-        result = fill_form_task.delay(tid, form.input_text, form.model)
+        result = fill_form_task.delay(tid, transcript, str(form.input_id), form.model)
         job = Job(
             celery_task_id=result.id,
             job_type="form_generation",
             template_id=tid,
-            input_text=form.input_text,
+            input_text=transcript,
             status="queued",
             model=form.model,
         )

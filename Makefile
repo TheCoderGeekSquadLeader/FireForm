@@ -1,7 +1,11 @@
-.PHONY: help init fireform build up down logs logs-app logs-ollama shell pull-model test clean super-clean status ready-banner sync docs
+.PHONY: help init fireform fireform-native build up up-native native-banner down logs logs-app logs-ollama shell pull-model test clean super-clean status ready-banner sync docs
 
-COMPOSE     = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev
-ENV_DEV     = docker/.env.dev
+# Bundled Ollama is behind a compose profile. COMPOSE includes it, so every
+# standard target runs the full in-Docker stack as before. COMPOSE_NATIVE leaves
+# it out, for an Ollama on the host or a remote server (see fireform-native).
+COMPOSE        = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev --profile bundled-ollama
+COMPOSE_NATIVE = docker compose -f docker/dev/compose.yml --env-file docker/.env.dev
+ENV_DEV        = docker/.env.dev
 
 # Read OLLAMA_MODEL from .env.dev at runtime; fall back to default if file absent.
 OLLAMA_MODEL = $(shell grep -E '^OLLAMA_MODEL=' $(ENV_DEV) 2>/dev/null | cut -d= -f2 | tr -d '[:space:]' || echo qwen2.5:1.5b)
@@ -19,8 +23,11 @@ help:
 	@echo "=============================="
 	@echo "make init         - First-time setup: check deps, create .env.dev, pick model"
 	@echo "make fireform     - Build images, start containers, pull Ollama model"
+	@echo "make fireform-native - Same, without the Ollama container or model download"
+	@echo "                    (uses OLLAMA_HOST from .env.dev: host or remote server)"
 	@echo "make build        - Build Docker images"
 	@echo "make up           - Start all containers (detached)"
+	@echo "make up-native    - Start all containers except Ollama (detached)"
 	@echo "make down         - Stop all containers"
 	@echo "make sync         - Fast-install new requirements.txt deps into running app (no rebuild)"
 	@echo "make status       - Show compact container health summary"
@@ -59,11 +66,31 @@ fireform:
 	fi
 	@$(MAKE) --no-print-directory ready-banner
 
+# No Ollama container and no model pull: the app and worker use OLLAMA_HOST from
+# .env.dev, which must point at an Ollama that already has the model.
+fireform-native:
+	@$(COMPOSE_NATIVE) up -d --build
+	@$(MAKE) --no-print-directory native-banner
+
 build:
 	@$(COMPOSE) build
 
 up:
 	@$(COMPOSE) up -d
+	@$(MAKE) --no-print-directory ready-banner
+
+up-native:
+	@$(COMPOSE_NATIVE) up -d
+	@$(MAKE) --no-print-directory native-banner
+
+native-banner:
+	@echo ""
+	@echo "Ollama is not in Docker. Using OLLAMA_HOST from $(ENV_DEV):"
+	@echo "   $$(grep -E '^OLLAMA_HOST=' $(ENV_DEV) | cut -d= -f2)"
+	@echo "Make sure $(OLLAMA_MODEL) is pulled there. For Ollama on this machine:"
+	@echo "   OLLAMA_HOST=0.0.0.0:11434 ollama serve   (listen beyond localhost)"
+	@echo "   ollama pull $(OLLAMA_MODEL)"
+	@echo "   OLLAMA_HOST=http://host.docker.internal:11434   (in $(ENV_DEV))"
 	@$(MAKE) --no-print-directory ready-banner
 
 # Fast path for "I added a package": install the delta into the running container

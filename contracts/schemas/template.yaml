@@ -4,8 +4,7 @@ TemplateSummary:
   type: object
   properties:
     template_id:
-      type: string
-      format: uuid
+      type: integer
     form_type:
       type: string
       description: Unique form type identifier (built-in or custom jurisdiction)
@@ -70,8 +69,7 @@ Template:
     - type: object
       properties:
         template_id:
-          type: string
-          format: uuid
+          type: integer
         version:
           type: string
         last_updated:
@@ -134,22 +132,12 @@ TemplateField:
         type: string
       nullable: true
       description: Valid values for enum fields
-    incident_mapping:
-      type: string
-      nullable: true
-      description: |
-        JSON path in the FireForm incident schema this field pulls its value from
-        (e.g. "fire.cause_category"). Null for a static field. Exactly one of
-        incident_mapping or static_text is expected.
     static_text:
       type: string
       nullable: true
       description: |
-        Fixed text drawn into the field instead of a mapped value. Null for a
-        data-mapped field. Mutually exclusive with incident_mapping.
-    default_value:
-      nullable: true
-      description: Default value if the mapped incident field is null
+        Fixed text drawn into the field instead of an LLM-extracted value. Null
+        for a field whose value comes from the transcript at fill time.
     layout:
       nullable: true
       description: Visual placement of the field on the PDF. Null for fields with

@@ -4,8 +4,12 @@ Covers every endpoint and the full upload → template → fill pipeline.
 All heavy dependencies (LLM, commonforms, filesystem) are mocked via conftest.
 """
 
+from uuid import uuid4
+
 from sqlmodel import select
 
+from app.api.schemas.enums import InputStatus, InputType
+from app.models import Template, FormSubmission, Input
 from app.core.config import API_PREFIX
 from app.models import FormSubmission, Template
 
@@ -40,8 +44,16 @@ class TestDBModels:
         db.commit()
         db.refresh(tpl)
 
+        input_record = Input(
+            input_type=InputType.text, status=InputStatus.ready, transcript="John Doe, firefighter"
+        )
+        db.add(input_record)
+        db.commit()
+        db.refresh(input_record)
+
         sub = FormSubmission(
             template_id=tpl.id,
+            input_id=input_record.input_id,
             input_text="John Doe, firefighter",
             output_pdf_path="src/outputs/filled.pdf",
         )
@@ -52,6 +64,7 @@ class TestDBModels:
         fetched = db.get(FormSubmission, sub.id)
         assert fetched is not None
         assert fetched.template_id == tpl.id
+        assert fetched.input_id == input_record.input_id
         assert fetched.input_text == "John Doe, firefighter"
         assert fetched.created_at is not None
 
@@ -125,7 +138,7 @@ class TestTemplateEndpoints:
         # Point the upload directory inside tmp_path (which is inside the project
         # for the path-safety check — we monkeypatch the check).
         monkeypatch.setattr(
-            "app.api.routes.templates.PROJECT_ROOT",
+            "app.core.paths.PROJECT_ROOT",
             tmp_path,
         )
         resp = client.post(
@@ -179,35 +192,87 @@ class TestFormEndpoints:
         })
         return resp.json()["id"]
 
-    def test_fill_form_success(self, client, mock_controller):
+    def _seed_input(self, db, status=InputStatus.ready, transcript="The employee is John Doe, email jdoe@ucsc.edu"):
+        """Helper: create an Input row directly and return its UUID."""
+        record = Input(input_type=InputType.text, status=status, transcript=transcript)
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        return record.input_id
+
+    def test_fill_form_success(self, client, mock_controller, db):
         tpl_id = self._seed_template(client, mock_controller)
+        input_id = self._seed_input(db)
 
         resp = client.post(f"{API_PREFIX}/forms/fill", json={
             "template_id": tpl_id,
-            "input_text": "The employee is John Doe, email jdoe@ucsc.edu",
+            "input_id": str(input_id),
         })
         assert resp.status_code == 200
 
         data = resp.json()
         assert data["id"] is not None
         assert data["template_id"] == tpl_id
+        assert data["input_text"] == "The employee is John Doe, email jdoe@ucsc.edu"
         assert data["output_pdf_path"] == "src/outputs/filled_output.pdf"
         mock_controller["form_ctrl"].fill_form.assert_called_once()
+
+        fetched = db.get(FormSubmission, data["id"])
+        assert fetched.input_id == input_id
 
     def test_fill_form_missing_template(self, client, mock_controller):
         resp = client.post(f"{API_PREFIX}/forms/fill", json={
             "template_id": 9999,
-            "input_text": "some text",
+            "input_id": str(uuid4()),
         })
         assert resp.status_code == 404
 
-    def test_fill_form_template_file_not_found(self, client, mock_controller):
+    def test_fill_form_missing_input(self, client, mock_controller):
         tpl_id = self._seed_template(client, mock_controller)
+
+        resp = client.post(f"{API_PREFIX}/forms/fill", json={
+            "template_id": tpl_id,
+            "input_id": str(uuid4()),
+        })
+        assert resp.status_code == 404
+        assert resp.json()["error_code"] == "INPUT_NOT_FOUND"
+
+    def test_fill_form_input_transcribing(self, client, mock_controller, db):
+        """An input still being transcribed is not usable yet → 409."""
+        tpl_id = self._seed_template(client, mock_controller)
+        input_id = self._seed_input(db, status=InputStatus.transcribing, transcript=None)
+
+        resp = client.post(f"{API_PREFIX}/forms/fill", json={
+            "template_id": tpl_id,
+            "input_id": str(input_id),
+        })
+        assert resp.status_code == 409
+        body = resp.json()
+        assert body["error_code"] == "INPUT_NOT_READY"
+        assert body["detail"]["status"] == "transcribing"
+
+    def test_fill_form_input_failed(self, client, mock_controller, db):
+        """An input whose transcription failed is never usable → 409."""
+        tpl_id = self._seed_template(client, mock_controller)
+        input_id = self._seed_input(db, status=InputStatus.failed, transcript=None)
+
+        resp = client.post(f"{API_PREFIX}/forms/fill", json={
+            "template_id": tpl_id,
+            "input_id": str(input_id),
+        })
+        assert resp.status_code == 409
+        body = resp.json()
+        assert body["error_code"] == "INPUT_NOT_READY"
+        assert body["detail"]["status"] == "failed"
+
+    def test_fill_form_template_file_not_found(self, client, mock_controller, db):
+        tpl_id = self._seed_template(client, mock_controller)
+        input_id = self._seed_input(db)
         mock_controller["form_ctrl"].fill_form.side_effect = FileNotFoundError("PDF template not found")
 
         resp = client.post(f"{API_PREFIX}/forms/fill", json={
             "template_id": tpl_id,
-            "input_text": "some text",
+            "input_id": str(input_id),
         })
         assert resp.status_code == 500
         assert resp.json()["error_code"] == "FORM_FILL_ERROR"
@@ -282,12 +347,13 @@ class TestFormEndpoints:
         assert resp.status_code == 200
         assert resp.json()["models"] == ["qwen2.5:1.5b"]
 
-    def test_fill_form_passes_model_override(self, client, mock_controller):
+    def test_fill_form_passes_model_override(self, client, mock_controller, db):
         """A `model` in the request reaches Controller.fill_form but isn't persisted."""
         tpl_id = self._seed_template(client, mock_controller)
+        input_id = self._seed_input(db, transcript="John Doe")
         resp = client.post(f"{API_PREFIX}/forms/fill", json={
             "template_id": tpl_id,
-            "input_text": "John Doe",
+            "input_id": str(input_id),
             "model": "qwen2.5:3b",
         })
         assert resp.status_code == 200
@@ -322,7 +388,7 @@ class TestE2EPipeline:
 
     def test_full_flow(self, client, mock_controller, pdf_upload, tmp_path, monkeypatch, db):
         # -- Step 1: Upload a PDF --
-        monkeypatch.setattr("app.api.routes.templates.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr("app.core.paths.PROJECT_ROOT", tmp_path)
         upload_resp = client.post(
             f"{API_PREFIX}/templates/upload",
             files=[pdf_upload],
@@ -355,13 +421,22 @@ class TestE2EPipeline:
         assert any(t["id"] == template_id for t in templates)
 
         # -- Step 4: Fill the form --
-        fill_resp = client.post(f"{API_PREFIX}/forms/fill", json={
-            "template_id": template_id,
-            "input_text": (
+        input_record = Input(
+            input_type=InputType.text,
+            status=InputStatus.ready,
+            transcript=(
                 "Officer Jane Smith, badge 4521. On January 15 2025 at "
                 "123 Main St, a structure fire was reported. Two engines "
                 "responded, fire contained within 45 minutes."
             ),
+        )
+        db.add(input_record)
+        db.commit()
+        db.refresh(input_record)
+
+        fill_resp = client.post(f"{API_PREFIX}/forms/fill", json={
+            "template_id": template_id,
+            "input_id": str(input_record.input_id),
         })
         assert fill_resp.status_code == 200
         fill_data = fill_resp.json()
@@ -375,4 +450,5 @@ class TestE2EPipeline:
         db_forms = list(db.exec(select(FormSubmission)))
         assert len(db_forms) == 1
         assert db_forms[0].template_id == template_id
+        assert db_forms[0].input_id == input_record.input_id
         assert "Jane Smith" in db_forms[0].input_text

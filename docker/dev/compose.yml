@@ -23,6 +23,11 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: fireform-ollama
+    # Bundled Ollama is opt-in: it starts only with the bundled-ollama profile
+    # (the Makefile's COMPOSE adds it by default). Leave the profile off to use
+    # an Ollama outside Docker instead; see `make fireform-native` and
+    # OLLAMA_HOST in docker/.env.example.
+    profiles: ["bundled-ollama"]
     ports:
       - "127.0.0.1:11434:11434"
     volumes:
@@ -83,12 +88,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
       whisper:
         condition: service_started
       redis:
         condition: service_healthy
+    # No dependency on Ollama: it may be the bundled container, the host, or a
+    # remote server. A fill that can't reach it fails with an error; nothing
+    # else in the app needs it at startup.
+    extra_hosts:
+      # Lets OLLAMA_HOST=http://host.docker.internal:11434 reach an Ollama on
+      # the host. Automatic on Docker Desktop (Mac/Win); host-gateway adds Linux.
+      - "host.docker.internal:host-gateway"
     entrypoint: ["sh", "docker/entrypoint.sh"]
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
@@ -124,8 +134,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
+    # Runs the fill jobs; reaches Ollama the same way as the app (see above).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: ["celery", "-A", "app.core.celery:celery_app", "worker", "--loglevel=info", "--concurrency=4"]
     volumes:
       - ../..:/app

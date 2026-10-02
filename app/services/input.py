@@ -1,10 +1,12 @@
 from datetime import date, datetime, timezone
+from uuid import UUID
 
 from sqlmodel import Session
 
 from app.api.schemas.enums import InputStatus, InputType
 from app.core.config import AUDIO_DIR
-from app.db.repositories import create_input, create_job, update_job
+from app.core.errors.base import AppError
+from app.db.repositories import create_input, create_job, get_input, update_job
 from app.models import Input, Job
 from app.tasks.transcribe import transcribe_audio_task
 
@@ -65,6 +67,28 @@ class InputService:
             raise
 
         return record, job
+
+    def resolve_transcript(self, session: Session, input_id: UUID) -> str:
+        """Look up a stored Input and return its transcript, for form-fill callers.
+
+        Shared by the sync and async fill paths so the input_id -> transcript
+        resolution (and its 404/409 rules) live in exactly one place.
+        """
+        record = get_input(session, input_id)
+        if record is None:
+            raise AppError(
+                f"Input with ID {input_id} not found",
+                status_code=404,
+                error_code="INPUT_NOT_FOUND",
+            )
+        if record.status != InputStatus.ready:
+            raise AppError(
+                f"Input {input_id} is not ready (status: {record.status})",
+                status_code=409,
+                error_code="INPUT_NOT_READY",
+                detail={"status": record.status},
+            )
+        return record.transcript
 
     def build_text_input(
         self,
