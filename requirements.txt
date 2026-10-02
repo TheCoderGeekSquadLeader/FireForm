@@ -11,6 +11,7 @@ httpx
 numpy<2
 ollama
 pypdf
+pdfplumber
 python-multipart
 celery[redis]
 redis

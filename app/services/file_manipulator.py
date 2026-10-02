@@ -1,10 +1,10 @@
 import os
+from datetime import datetime
 
 from pdfrw import PdfDict, PdfReader, PdfWriter
 
 from app.core.logging import get_logger
-from app.services.filler import Filler
-from app.services.llm import LLM
+from app.services.form_filler import filler
 
 logger = get_logger(__name__)
 
@@ -54,6 +54,9 @@ class FileManipulator:
         """
         It receives the raw data, runs the PDF filling logic,
         and returns the path to the newly created file.
+
+        `fields` is unused: form_filler reads the fields, tables and tooltip
+        descriptions straight from the PDF.
         """
         logger.info("[1] Received request from frontend.")
         logger.info("[2] PDF template path: %s", pdf_form_path)

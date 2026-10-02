@@ -1,22 +1,17 @@
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 from app.core.celery import celery_app
 from app.db.database import get_session
-from app.db.repositories import (
-    create_form,
-    get_job_by_celery_id,
-    get_template,
-    update_job,
-)
-from app.models import FormSubmission
-from app.services.controller import Controller
+from app.db.repositories import get_job_by_celery_id, get_template, update_job
+from app.services.form import FormService
 
 logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="fill_form")
-def fill_form_task(self, template_id: int, input_text: str, model: str | None = None):
+def fill_form_task(self, template_id: int, input_text: str, input_id_str: str, model: str | None = None):
     session = next(get_session())
     try:
         job = get_job_by_celery_id(session, self.request.id)
@@ -32,20 +27,9 @@ def fill_form_task(self, template_id: int, input_text: str, model: str | None = 
         if not template:
             raise ValueError(f"Template {template_id} not found")
 
-        controller = Controller()
-        path = controller.fill_form(
-            user_input=input_text,
-            fields=template.fields,
-            pdf_form_path=template.pdf_path,
-            model=model,
+        submission = FormService().fill_and_persist(
+            session, template, input_text, UUID(input_id_str), model
         )
-
-        submission = FormSubmission(
-            template_id=template_id,
-            input_text=input_text,
-            output_pdf_path=path,
-        )
-        create_form(session, submission)
 
         job.status = "completed"
         job.progress_percent = 100

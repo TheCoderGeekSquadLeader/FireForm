@@ -17,14 +17,8 @@ servers:
 tags:
   - name: input
     description: Submit voice or text incident narratives
-  - name: extraction
-    description: AI-powered data extraction from narratives into canonical JSON
   - name: forms
     description: Generate agency-specific PDF forms from extracted data
-  - name: incidents
-    description: Manage incident records linking inputs, extractions, and forms
-  - name: reporting
-    description: Aggregate statistics and periodic report generation
   - name: templates
     description: Form template configuration and management
   - name: system
@@ -45,41 +39,11 @@ paths:
   /api/v1/input/{input_id}:
     $ref: "path/input.yaml#/input_by_id"
 
-  # ── Layer 2: AI Extraction ─────────────────────────────────────
-  /api/v1/extract/{input_id}:
-    $ref: "path/extraction.yaml#/extract_by_input"
-  /api/v1/extract/{extract_id}:
-    $ref: "path/extraction.yaml#/extract_by_id"
-  /api/v1/extract/{extract_id}/validate:
-    $ref: "path/extraction.yaml#/validate"
-
-  # ── Layer 3: Form Generation ───────────────────────────────────
-  /api/v1/forms/generate/all:
-    $ref: "path/forms.yaml#/generate_all"
-  /api/v1/forms/generate/{form_type}:
-    $ref: "path/forms.yaml#/generate_single"
-  /api/v1/forms/{form_id}:
-    $ref: "path/forms.yaml#/form_by_id"
-  /api/v1/forms/{form_id}/pdf:
-    $ref: "path/forms.yaml#/form_pdf"
-  /api/v1/forms/{form_id}/json:
-    $ref: "path/forms.yaml#/form_json"
-  /api/v1/forms/batch/{batch_id}:
-    $ref: "path/forms.yaml#/batch_by_id"
-
-  # ── Layer 4: Incident Management ───────────────────────────────
-  /api/v1/incidents:
-    $ref: "path/incidents.yaml#/incidents"
-  /api/v1/incidents/{incident_id}:
-    $ref: "path/incidents.yaml#/incident_by_id"
-
-  # ── Layer 5: Reporting & Analytics ─────────────────────────────
-  /api/v1/reports/summary:
-    $ref: "path/reporting.yaml#/summary"
-  /api/v1/reports/generate:
-    $ref: "path/reporting.yaml#/generate"
-  /api/v1/reports/{report_id}:
-    $ref: "path/reporting.yaml#/report_by_id"
+  # ── Layer 3: Form Fill ──────────────────────────────────────────
+  /api/v1/forms/fill:
+    $ref: "path/forms.yaml#/fill"
+  /api/v1/forms/jobs:
+    $ref: "path/forms.yaml#/async_fill"
 
   # ── Layer 6: Templates & Configuration ─────────────────────────
   /api/v1/templates:

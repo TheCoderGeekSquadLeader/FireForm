@@ -100,8 +100,8 @@ def pdf_upload(pdf_bytes):
 @pytest.fixture
 def mock_controller():
     """Patch Controller so create_template / fill_form don't touch the FS or LLM."""
-    with patch("app.api.routes.templates.Controller") as tpl_cls, \
-         patch("app.api.routes.forms.Controller") as form_cls:
+    with patch("app.services.template.Controller") as tpl_cls, \
+         patch("app.services.form.Controller") as form_cls:
         tpl_instance = MagicMock()
         tpl_instance.create_template.return_value = "src/inputs/test_template.pdf"
         tpl_cls.return_value = tpl_instance

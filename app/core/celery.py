@@ -1,6 +1,8 @@
 from celery import Celery
-
 from app.core.config import CELERY_BROKER_URL, CELERY_RESULT_BACKEND
+# Optional Celery Beat schedule — runs purge_old_submissions once a day.
+# Enable by running: celery -A app.core.celery beat
+from celery.schedules import crontab
 
 celery_app = Celery(
     "fireform",
@@ -18,9 +20,6 @@ celery_app.conf.update(
 
 celery_app.conf.include = ["app.tasks.fill", "app.tasks.purge", "app.tasks.transcribe"]
 
-# Optional Celery Beat schedule — runs purge_old_submissions once a day.
-# Enable by running: celery -A app.core.celery beat
-from celery.schedules import crontab
 
 celery_app.conf.beat_schedule = {
     "daily-submission-purge": {
