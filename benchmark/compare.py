@@ -8,14 +8,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from accuracy import (
+from accuracy import ( # noqa: E402
     _is_blank,
     _is_empty_value,
     _is_ignored_field,
     _is_unchecked_checkbox,
     calculate_accuracy,
     calculate_accuracy_with_judge,
-)
+) 
 
 
 _MISSING = object()
