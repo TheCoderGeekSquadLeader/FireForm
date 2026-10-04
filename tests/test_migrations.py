@@ -80,17 +80,19 @@ def test_formsubmission_columns(alembic_cfg, alembic_engine):
 
     inspector = inspect(alembic_engine)
     columns = {c["name"] for c in inspector.get_columns("formsubmission")}
-    assert columns == {"id", "template_id", "input_text", "output_pdf_path", "created_at"}
+    assert columns == {
+        "id", "template_id", "input_id", "input_text", "output_pdf_path", "created_at"
+    }
 
 
 def test_formsubmission_fk(alembic_cfg, alembic_engine):
     command.upgrade(alembic_cfg, "head")
 
     inspector = inspect(alembic_engine)
-    fks = inspector.get_foreign_keys("formsubmission")
-    assert len(fks) == 1
-    assert fks[0]["referred_table"] == "template"
-    assert fks[0]["referred_columns"] == ["id"]
+    fks = {fk["referred_table"]: fk for fk in inspector.get_foreign_keys("formsubmission")}
+    assert len(fks) == 2
+    assert fks["template"]["referred_columns"] == ["id"]
+    assert fks["inputs"]["referred_columns"] == ["input_id"]
 
 
 def test_job_columns(alembic_cfg, alembic_engine):
@@ -294,9 +296,9 @@ def test_reports_no_fk(alembic_cfg, alembic_engine):
 
 
 def test_downgrade_002(alembic_cfg, alembic_engine):
-    """Downgrade by one step removes only the 002 tables, leaving 001 tables intact."""
+    """Downgrading to 001 removes the 002 tables, leaving 001 tables intact."""
     command.upgrade(alembic_cfg, "head")
-    command.downgrade(alembic_cfg, "-1")
+    command.downgrade(alembic_cfg, "001")
 
     inspector = inspect(alembic_engine)
     tables = inspector.get_table_names()
@@ -308,3 +310,23 @@ def test_downgrade_002(alembic_cfg, alembic_engine):
     assert "template" in tables
     assert "formsubmission" in tables
     assert "job" in tables
+
+
+def test_downgrade_003(alembic_cfg, alembic_engine):
+    """Downgrade by one step from head removes only the input_id FK/column."""
+    command.upgrade(alembic_cfg, "head")
+    command.downgrade(alembic_cfg, "-1")
+
+    inspector = inspect(alembic_engine)
+    columns = {c["name"] for c in inspector.get_columns("formsubmission")}
+    assert "input_id" not in columns
+    assert "input_text" in columns
+    tables = inspector.get_table_names()
+    assert "inputs" in tables
+
+
+def test_alembic_check_no_pending_migrations(alembic_cfg):
+    """Verify that models and migrations are completely in sync (alembic check passes)."""
+    command.upgrade(alembic_cfg, "head")
+    command.check(alembic_cfg)
+

@@ -1,16 +1,13 @@
 import os
+from datetime import datetime
 
 from app.core.logging import get_logger
-from app.services.filler import Filler
-from app.services.llm import LLM
+from app.services.form_filler import filler
 
 logger = get_logger(__name__)
 
 
 class FileManipulator:
-    def __init__(self):
-        self.filler = Filler()
-        self.llm = LLM()
 
     def prepare_fillable(self, pdf_path: str):
         import os
@@ -35,7 +32,10 @@ class FileManipulator:
     def fill_form(self, user_input: str, fields: list, pdf_form_path: str, model: str = None, sign: bool = False):
         """
         It receives the raw data, runs the PDF filling logic,
-        optionally signs it digitally, and returns the path to the newly created file.
+        and returns the path to the newly created file.
+
+        `fields` is unused: form_filler reads the fields, tables and tooltip
+        descriptions straight from the PDF.
         """
         logger.info("[1] Received request from frontend.")
         logger.info("[2] PDF template path: %s", pdf_form_path)
@@ -45,10 +45,13 @@ class FileManipulator:
 
         logger.info("[3] Starting extraction and PDF filling process...")
         try:
-            self.llm._target_fields = fields
-            self.llm._transcript_text = user_input
-            self.llm._model = model
-            output_name = self.filler.fill_form(pdf_form=pdf_form_path, llm=self.llm)
+            output_name = (
+                pdf_form_path[:-4]
+                + "_"
+                + datetime.now().strftime("%Y%m%d_%H%M%S")
+                + "_filled.pdf"
+            )
+            filler.fill(pdf_form_path, user_input, output_name, model)
 
             # Metadata scrubbing (#315)
             try:

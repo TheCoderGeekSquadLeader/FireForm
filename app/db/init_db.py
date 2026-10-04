@@ -51,7 +51,7 @@ def seed_db():
                 name="Manual Test Template",
                 fields=fields,
                 pdf_path=f"{DEFAULT_TEMPLATE_DIR}/file_template_manual.pdf",
-                created_at=datetime.datetime.now(),
+                created_at=datetime.datetime.now(datetime.timezone.utc),
             )
             session.add(default_template)
             session.commit()

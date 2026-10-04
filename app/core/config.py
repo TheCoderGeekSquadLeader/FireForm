@@ -35,6 +35,7 @@ DB_ECHO = os.getenv("FIREFORM_DB_ECHO", "true").lower() == "true"
 # --- External services ----------------------------------------------------
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "300"))
 WHISPER_HOST = os.getenv("WHISPER_HOST", "http://localhost:9000").rstrip("/")
 
 # --- Celery / Redis -------------------------------------------------------
