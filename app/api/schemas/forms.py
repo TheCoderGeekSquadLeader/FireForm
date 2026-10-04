@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class FormFill(BaseModel):
     template_id: int
-    input_id: UUID
+    input_text: str | None = None
+    input_id: UUID | None = None
     model: str | None = None
 
 
@@ -14,9 +15,9 @@ class FormFillResponse(BaseModel):
     template_id: int
     input_text: str
     output_pdf_path: str
+    values: dict | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TranscriptionResponse(BaseModel):

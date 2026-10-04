@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 from pypdf import PdfReader
 
-from app.services.file_manipulator import FileManipulator
 from app.services.form_filler import filler, template
 
 ICS_205A = str(Path(__file__).resolve().parents[1] / "benchmark/data/pdfs/ics_205a.pdf")
@@ -70,11 +69,3 @@ def test_fill_defaults_to_configured_model():
 
     assert call.call_args.args[2] == filler.OLLAMA_MODEL
 
-
-def test_file_manipulator_fills_through_form_filler():
-    with patch("app.services.file_manipulator.filler.fill") as fill:
-        output = FileManipulator().fill_form("Narrative text.", [], ICS_205A, model="test-model")
-
-    assert output.startswith(ICS_205A[:-4] + "_")
-    assert output.endswith("_filled.pdf")
-    fill.assert_called_once_with(ICS_205A, "Narrative text.", output, "test-model")

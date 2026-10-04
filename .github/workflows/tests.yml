@@ -2,19 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main,development]
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'alembic.ini'
-      - '.github/workflows/tests.yml'
+    branches: [main, development]  # post-merge verification after PRs land
   pull_request:
-    branches: [main, development, 'development-*']
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - 'alembic.ini'
-      - '.github/workflows/tests.yml'
+    branches: [main, development, 'development-*']  # gates all PRs
 
 jobs:
   test:

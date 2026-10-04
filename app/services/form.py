@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.core import paths
+from app.core.errors.base import AppError
 from app.db.repositories import (
     create_form,
     delete_form_submission,
@@ -14,7 +15,7 @@ from app.db.repositories import (
     get_submissions_with_template,
 )
 from app.models import FormSubmission, Template
-from app.services.controller import Controller
+from app.services.form_filler import filler
 from app.services.input import InputService
 
 _STOPWORDS = {
@@ -31,13 +32,36 @@ _STOPWORDS = {
 
 class FormService:
     def __init__(self):
-        self.controller = Controller()
         self.input_service = InputService()
 
     def fill_form(
-        self, session: Session, template: Template, input_id: UUID, model: str | None = None
+        self,
+        session: Session,
+        template: Template,
+        input_id: UUID | None = None,
+        input_text: str | None = None,
+        model: str | None = None,
     ) -> FormSubmission:
-        transcript = self.input_service.resolve_transcript(session, input_id)
+        if input_id is not None and not input_text:
+            transcript = self.input_service.resolve_transcript(session, input_id)
+        elif input_text:
+            transcript = input_text
+            if input_id is None:
+                from app.api.schemas.enums import InputStatus, InputType
+                from app.models import Input
+                input_record = Input(
+                    input_type=InputType.text,
+                    status=InputStatus.ready,
+                    transcript=input_text,
+                    character_count=len(input_text),
+                    word_count=len(input_text.split()),
+                )
+                session.add(input_record)
+                session.commit()
+                session.refresh(input_record)
+                input_id = input_record.input_id
+        else:
+            raise AppError("Either input_id or input_text is required", status_code=422, error_code="VALIDATION_ERROR")
         return self.fill_and_persist(session, template, transcript, input_id, model)
 
     def fill_and_persist(
@@ -48,20 +72,31 @@ class FormService:
         input_id: UUID,
         model: str | None = None,
     ) -> FormSubmission:
-        path = self.controller.fill_form(
-            user_input=transcript,
-            fields=template.fields,
-            pdf_form_path=template.pdf_path,
+        resolved_pdf = paths._resolve_project_file(template.pdf_path)
+        if not resolved_pdf.exists():
+            raise FileNotFoundError(f"PDF template not found at {template.pdf_path}")
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        out_name = f"{resolved_pdf.stem}_{timestamp}_filled.pdf"
+        out_target = resolved_pdf.parent / out_name
+
+        filler.fill(
+            pdf_path=str(resolved_pdf),
+            narrative=transcript,
+            out_path=str(out_target),
             model=model,
         )
+
+        relative_out = out_target.relative_to(paths.PROJECT_ROOT).as_posix()
 
         submission = FormSubmission(
             template_id=template.id,
             input_id=input_id,
             input_text=transcript,
-            output_pdf_path=path,
+            output_pdf_path=relative_out,
         )
         return create_form(session, submission)
+
 
     def list_submissions(self, session: Session) -> list[dict]:
         results = get_submissions(session)

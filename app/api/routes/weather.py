@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 
 from app.core.errors.base import AppError
-from app.services.controller import Controller
+from app.services.external_apis.weather_api import WeatherAPI
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 
@@ -34,10 +34,10 @@ def get_weather_forecast(
     Coordinates must be supplied as **decimal degrees** — not degree/minute/second notation. E.g. -122.4194, 37.7749.
     Dates must use the **YYYY-MM-DD** format (ISO 8601).
     """
-    controller = Controller()
+    weather_api = WeatherAPI()
     try:
         requested = [f.strip() for f in fields.split(",") if f.strip()] if fields else []
-        weather_data = controller.get_weather(latitude, longitude, start_date, end_date, hourly_fields=requested)
+        weather_data = weather_api.get_weather(latitude, longitude, start_date, end_date, hourly_fields=requested)
         return weather_data
     except Exception as e:
         raise AppError(str(e), status_code=500)

@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 
 from app.core.errors.base import AppError
-from app.services.controller import Controller
+from app.services.external_apis.zipcode_api import ZipCodeAPI
 
 router = APIRouter(prefix="/zipcode", tags=["zipcode"])
 
@@ -20,10 +20,11 @@ def lookup_address(address: str):
     Example: 
         address = "1600 Amphitheatre Parkway, Mountain View, CA, US"
     """
-    controller = Controller()
+    zipcode_api = ZipCodeAPI()
     try:
-        return controller.lookup_address(address)
+        return zipcode_api.lookup_address(address)
     except TimeoutError as e:
         raise AppError(str(e), status_code=504)
     except Exception as e:
         raise AppError(str(e), status_code=500)
+

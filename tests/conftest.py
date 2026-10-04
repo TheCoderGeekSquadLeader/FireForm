@@ -95,22 +95,25 @@ def pdf_upload(pdf_bytes):
 
 
 # ---------------------------------------------------------------------------
-# Controller mock — patches the heavy dependencies at the route level
+# Pipeline mock — patches the heavy dependencies (LLM + filesystem) directly
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def mock_controller():
-    """Patch Controller so create_template / fill_form don't touch the FS or LLM."""
-    with patch("app.services.template.Controller") as tpl_cls, \
-         patch("app.services.form.Controller") as form_cls:
-        tpl_instance = MagicMock()
-        tpl_instance.create_template.return_value = "src/inputs/test_template.pdf"
-        tpl_cls.return_value = tpl_instance
+    """Patch filler.fill and extract_pdf_template so tests don't touch the FS or LLM."""
+    with patch("app.services.form.filler.fill") as mock_fill, \
+         patch("app.services.template.extract_pdf_template") as mock_extract:
 
-        form_instance = MagicMock()
-        form_instance.fill_form.return_value = "src/outputs/filled_output.pdf"
-        form_cls.return_value = form_instance
+        # filler.fill writes the output PDF; we return a fake relative path
+        mock_fill.return_value = None  # fill() writes to disk; path is computed in service
+
+        # extract_pdf_template returns (schema, tables, groups)
+        mock_extract.return_value = (
+            {"properties": {"field1": {"type": "string", "description": "Field 1"}}},
+            [],
+            {},
+        )
 
         yield {
-            "template_ctrl": tpl_instance,
-            "form_ctrl": form_instance,
+            "mock_fill": mock_fill,
+            "mock_extract": mock_extract,
         }

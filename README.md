@@ -60,7 +60,7 @@ npm install
 npm start
 ```
 
-> **Note:** The desktop app is a thin Electron wrapper around the same web frontend. The backend (API + Ollama) still needs to be running — see the [Deployment Guide](https://github.com/fireform-core/FireForm/wiki/DEPLOYMENT).
+> **Note:** The desktop app is a thin Electron wrapper around the same web frontend. The backend (API + Ollama) still needs to be running — see the [Deployment Guide](docs/DEPLOYMENT.md).
 
 ## 🏆 Acknowledgements and Contributors
 This project was built in 48 hours for the Reboot the Earth 2025 hackathon. Thank you to the United Nations and UC Santa Cruz for hosting this incredible event and inspiring us to build solutions for a better future.

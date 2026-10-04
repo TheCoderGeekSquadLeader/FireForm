@@ -25,18 +25,30 @@ router = APIRouter(prefix="/forms", tags=["forms"])
 
 @router.post("/fill", response_model=FormFillResponse)
 def fill_form(form: FormFill, db: Session = Depends(get_db)):
-
     fetched_template = get_template(db, form.template_id)
     if not fetched_template:
         raise AppError("Template not found", status_code=404, error_code="TEMPLATE_NOT_FOUND")
 
     svc = FormService()
     try:
-        return svc.fill_form(db, template=fetched_template, input_id=form.input_id, model=form.model)
+        submission = svc.fill_form(
+            db,
+            template=fetched_template,
+            input_id=form.input_id,
+            input_text=form.input_text,
+            model=form.model,
+        )
+        return FormFillResponse(
+            id=submission.id,
+            template_id=submission.template_id,
+            input_text=submission.input_text,
+            output_pdf_path=submission.output_pdf_path,
+        )
     except AppError:
         raise
     except Exception as e:
         raise AppError(str(e), status_code=500, error_code="FORM_FILL_ERROR")
+
 
 
 @router.get("/models", response_model=ModelsResponse)
