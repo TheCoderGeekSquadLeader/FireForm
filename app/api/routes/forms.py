@@ -115,7 +115,10 @@ def delete_submission_endpoint(submission_id: int, db: Session = Depends(get_db)
 
 
 @router.post("/purge", dependencies=[Depends(verify_api_key)])
-def purge_submissions_endpoint(days: int = Query(default=None), db: Session = Depends(get_db)):
+def purge_submissions_endpoint(
+    days: int | None = Query(default=None, ge=1, le=3650, description="Retention window in days (must be >= 1)"),
+    db: Session = Depends(get_db),
+):
     retention_days = days if days is not None else RETENTION_PERIOD_DAYS
     purged_count = FormService().purge_submissions(db, retention_days)
     return {"status": "success", "purged_count": purged_count, "retention_days_used": retention_days}

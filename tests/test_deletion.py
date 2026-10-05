@@ -186,12 +186,27 @@ class TestPurgeSubmissions:
         assert resp.status_code == 200
         assert not out_pdf.exists()
 
+    def test_purge_rejects_negative_or_zero_days(self, client, db):
+        """Purge with non-positive days (<= 0) should be rejected with 422 to prevent catastrophic deletion."""
+        tpl_id = _seed_template(client)
+        sub_id = _seed_submission(db, tpl_id)
+
+        resp_negative = client.post(f"{API_PREFIX}/forms/purge?days=-5")
+        assert resp_negative.status_code == 422
+
+        resp_zero = client.post(f"{API_PREFIX}/forms/purge?days=0")
+        assert resp_zero.status_code == 422
+
+        # Verify submission was not deleted
+        assert db.get(FormSubmission, sub_id) is not None
+
 
 # ===========================================================================
 # API-Key Access Control
 # ===========================================================================
 
 class TestApiKeyAccessControl:
+
 
     @pytest.fixture(autouse=True)
     def _set_api_key(self, monkeypatch):
