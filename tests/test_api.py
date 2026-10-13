@@ -11,7 +11,6 @@ from sqlmodel import select
 from app.api.schemas.enums import InputStatus, InputType
 from app.models import Template, FormSubmission, Input
 from app.core.config import API_PREFIX
-from app.models import FormSubmission, Template
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DB model sanity

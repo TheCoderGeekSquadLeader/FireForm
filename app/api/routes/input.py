@@ -1,4 +1,3 @@
-# ruff: noqa: B008
 from datetime import date
 from pathlib import Path
 from uuid import UUID

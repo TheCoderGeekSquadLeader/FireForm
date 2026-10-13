@@ -3,7 +3,6 @@
 Health contract: contracts/path/system.yaml + contracts/schemas/system.yaml
 """
 
-# ruff: noqa: BLE001, S110
 
 import shutil
 import time

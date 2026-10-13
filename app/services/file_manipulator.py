@@ -1,10 +1,10 @@
 import os
-from datetime import datetime
 
 from pdfrw import PdfDict, PdfReader, PdfWriter
 
 from app.core.logging import get_logger
-from app.services.form_filler import filler
+from app.services.filler import Filler
+from app.services.llm import LLM
 
 logger = get_logger(__name__)
 
@@ -90,7 +90,7 @@ class FileManipulator:
                 logger.info(
                     "Successfully scrubbed sensitive metadata from output PDF."
                 )
-            except Exception as meta_err:  # noqa: BLE001
+            except Exception as meta_err:
                 logger.warning(
                     "Could not strip PDF metadata: %s", meta_err
                 )
