@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.schemas.enums import HealthState
 from app.api.schemas.system import (
     ComponentHealth,
     HealthComponents,
@@ -38,9 +39,9 @@ def _check_database() -> ComponentHealth:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         elapsed = int((time.monotonic() - t0) * 1000)
-        return ComponentHealth(status="healthy", response_time_ms=elapsed)
+        return ComponentHealth(status=HealthState.healthy, response_time_ms=elapsed)
     except Exception as exc:
-        return ComponentHealth(status="unhealthy", detail=str(exc))
+        return ComponentHealth(status=HealthState.unhealthy, detail=str(exc))
 
 
 def _check_ollama() -> ComponentHealth:
@@ -82,7 +83,7 @@ def _check_ollama() -> ComponentHealth:
                 ModelInfo(name=name, size_gb=size_gb, quantization=quantization, loaded=name in running_names)
             )
 
-        status = "degraded" if elapsed > _SLOW_MS else "healthy"
+        status = HealthState.degraded if elapsed > _SLOW_MS else HealthState.healthy
 
         return ComponentHealth(
             status=status,
@@ -95,7 +96,7 @@ def _check_ollama() -> ComponentHealth:
             current_load=None,
         )
     except requests.exceptions.RequestException as exc:
-        return ComponentHealth(status="unhealthy", detail=str(exc))
+        return ComponentHealth(status=HealthState.unhealthy, detail=str(exc))
 
 
 def _check_whisper() -> ComponentHealth:
@@ -106,18 +107,18 @@ def _check_whisper() -> ComponentHealth:
         resp = requests.get(f"{WHISPER_HOST}/docs", timeout=_PROBE_TIMEOUT)
         resp.raise_for_status()
         elapsed = int((time.monotonic() - t0) * 1000)
-        return ComponentHealth(status="healthy", response_time_ms=elapsed)
+        return ComponentHealth(status=HealthState.healthy, response_time_ms=elapsed)
     except requests.exceptions.RequestException as exc:
-        return ComponentHealth(status="unhealthy", detail=str(exc))
+        return ComponentHealth(status=HealthState.unhealthy, detail=str(exc))
 
 
 def _check_storage() -> ComponentHealth:
     try:
         usage = shutil.disk_usage(DATA_DIR)
         disk_free_gb = round(usage.free / (1024 ** 3), 2)
-        return ComponentHealth(status="healthy", disk_free_gb=disk_free_gb)
+        return ComponentHealth(status=HealthState.healthy, disk_free_gb=disk_free_gb)
     except OSError as exc:
-        return ComponentHealth(status="unhealthy", detail=str(exc))
+        return ComponentHealth(status=HealthState.unhealthy, detail=str(exc))
 
 
 @router.get(
@@ -140,12 +141,12 @@ def get_health():
 
     statuses = {database.status, ollama.status, whisper.status, storage.status}
 
-    if database.status == "unhealthy":
-        overall = "unhealthy"
-    elif "unhealthy" in statuses or "degraded" in statuses:
-        overall = "degraded"
+    if database.status == HealthState.unhealthy:
+        overall = HealthState.unhealthy
+    elif HealthState.unhealthy in statuses or HealthState.degraded in statuses:
+        overall = HealthState.degraded
     else:
-        overall = "healthy"
+        overall = HealthState.healthy
 
     body = HealthStatus(
         status=overall,
@@ -154,7 +155,7 @@ def get_health():
         components=components,
     )
 
-    http_status = 503 if overall == "unhealthy" else 200
+    http_status = 503 if overall == HealthState.unhealthy else 200
     return JSONResponse(
         content=body.model_dump(exclude_none=True),
         status_code=http_status,

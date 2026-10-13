@@ -28,8 +28,10 @@ DEFAULT_TEMPLATE_DIR = os.getenv("FIREFORM_TEMPLATE_DIR", "data/inputs")
 # --- Database -------------------------------------------------------------
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://fireform:fireform@localhost:5432/fireform",
+    "postgresql+psycopg2://fireform:fireform@localhost:5432/fireform",
 )
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 DB_ECHO = os.getenv("FIREFORM_DB_ECHO", "true").lower() == "true"
 
 # --- External services ----------------------------------------------------

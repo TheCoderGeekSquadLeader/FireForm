@@ -110,7 +110,7 @@ services:
       - PYTHONUNBUFFERED=1
       - CUDA_VISIBLE_DEVICES=
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql://fireform:fireform@postgres:5432/fireform
+      - DATABASE_URL=postgresql+psycopg2://fireform:fireform@postgres:5432/fireform
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-300}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
@@ -144,7 +144,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql://fireform:fireform@postgres:5432/fireform
+      - DATABASE_URL=postgresql+psycopg2://fireform:fireform@postgres:5432/fireform
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-300}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
